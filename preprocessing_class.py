@@ -18,16 +18,16 @@ class Preprocessing:
         # 4. same_data와 submission_diff 반환
 
 
-        all_data = pd.concat([train_data, test_data], sort=False)
-        all_data.reset_index(drop=True, inplace=True) # all_data의 인덱스를 0부터 순차적으로 변경(concat하면 index가 중복될 수 있기 때문에 reset_index() 사용)
+        data = pd.concat([train_data, test_data], sort=False)
+        data.reset_index(drop=True, inplace=True) # data의 인덱스를 0부터 순차적으로 변경(concat하면 index가 중복될 수 있기 때문에 reset_index() 사용)
 
         # Equipment_Dam, Equipment_Fill1, Equipment_Fill2의 값을 비교하여 다르면 해당 데이터의 인덱스를 index_of_diff, 같으면 index_of_same 저장
         index_of_diff = []
         index_of_same = []
 
-        dam_values = all_data['Equipment_Dam'].values
-        fill1_values = all_data['Equipment_Fill1'].values
-        fill2_values = all_data['Equipment_Fill2'].values
+        dam_values = data['Equipment_Dam'].values
+        fill1_values = data['Equipment_Fill1'].values
+        fill2_values = data['Equipment_Fill2'].values
 
         index_of_diff = np.where((dam_values != fill1_values) | (dam_values != fill2_values))[0].tolist()
         index_of_same = np.where((dam_values == fill1_values) & (dam_values == fill2_values))[0].tolist()
@@ -37,9 +37,9 @@ class Preprocessing:
         index_of_diff2 = []
         index_of_same2 = []
 
-        dam_values = all_data['PalletID Collect Result_Dam'].values
-        fill1_values = all_data['PalletID Collect Result_Fill1'].values
-        fill2_values = all_data['PalletID Collect Result_Fill2'].values
+        dam_values = data['PalletID Collect Result_Dam'].values
+        fill1_values = data['PalletID Collect Result_Fill1'].values
+        fill2_values = data['PalletID Collect Result_Fill2'].values
 
         index_of_diff2 = np.where((dam_values != fill1_values) | (dam_values != fill2_values))[0].tolist()
         index_of_same2 = np.where((dam_values == fill1_values) & (dam_values == fill2_values))[0].tolist()
@@ -49,9 +49,9 @@ class Preprocessing:
         index_of_diff3 = []
         index_of_same3 = []
 
-        dam_values = all_data['Production Qty Collect Result_Dam'].values
-        fill1_values = all_data['Production Qty Collect Result_Fill1'].values
-        fill2_values = all_data['Production Qty Collect Result_Fill2'].values
+        dam_values = data['Production Qty Collect Result_Dam'].values
+        fill1_values = data['Production Qty Collect Result_Fill1'].values
+        fill2_values = data['Production Qty Collect Result_Fill2'].values
 
         index_of_diff3 = np.where((dam_values != fill1_values) | (dam_values != fill2_values))[0].tolist()
         index_of_same3 = np.where((dam_values == fill1_values) & (dam_values == fill2_values))[0].tolist()
@@ -64,8 +64,8 @@ class Preprocessing:
 
 
         # index_of_diff_total에 해당하는 데이터를 diff_data에 저장하고, 해당하지 않는 나머지 데이터를 same_data에 저장
-        diff_data = all_data.loc[index_of_diff_total]
-        same_data = all_data.drop(index=index_of_diff_total)
+        diff_data = data.loc[index_of_diff_total]
+        same_data = data.drop(index=index_of_diff_total)
 
         # diff_data의 'target' 컬럼이 nan인 행만 추출하여 diff_test에 저장
         diff_test = diff_data[diff_data['target'].isnull()]
@@ -83,10 +83,111 @@ class Preprocessing:
         
     
     def dam(self, data):
-        
+        columns1 = [
+            'Stage1 Line1 Distance Speed Collect Result_Dam',
+            'Stage1 Line2 Distance Speed Collect Result_Dam',
+            'Stage1 Line3 Distance Speed Collect Result_Dam',
+            'Stage1 Line4 Distance Speed Collect Result_Dam'
+        ]
+
+        # 주어진 칼럼들에서 편차를 계산하는 코드
+        data['Stage1_Distance_Speed_StdDev'] = data[columns1].std(axis=1)
+
+        columns2 = [
+            'Stage2 Line1 Distance Speed Collect Result_Dam',
+            'Stage2 Line2 Distance Speed Collect Result_Dam',
+            'Stage2 Line3 Distance Speed Collect Result_Dam',
+            'Stage2 Line4 Distance Speed Collect Result_Dam'
+        ]
+
+        # 주어진 칼럼들에서 편차를 계산하는 코드
+        data['Stage2_Distance_Speed_StdDev'] = data[columns2].std(axis=1)
+        # 열 목록 정의
+        cols_to_average = ['Stage1 Circle1 Distance Speed Collect Result_Dam',
+            'Stage1 Circle2 Distance Speed Collect Result_Dam',
+            'Stage1 Circle3 Distance Speed Collect Result_Dam',
+            'Stage1 Circle4 Distance Speed Collect Result_Dam',
+            'Stage1 Line1 Distance Speed Collect Result_Dam',
+            'Stage1 Line2 Distance Speed Collect Result_Dam',
+            'Stage1 Line3 Distance Speed Collect Result_Dam',
+            'Stage1 Line4 Distance Speed Collect Result_Dam',
+            'Stage2 Circle1 Distance Speed Collect Result_Dam',
+            'Stage2 Circle2 Distance Speed Collect Result_Dam',
+            'Stage2 Circle3 Distance Speed Collect Result_Dam',
+            'Stage2 Circle4 Distance Speed Collect Result_Dam',
+            'Stage2 Line1 Distance Speed Collect Result_Dam',
+            'Stage2 Line2 Distance Speed Collect Result_Dam',
+            'Stage2 Line3 Distance Speed Collect Result_Dam',
+            'Stage2 Line4 Distance Speed Collect Result_Dam',
+
+        ]
+        data['Average Stage1 CL Distance Speed Collect Result_Dam'] = data[cols_to_average[:8]].mean(axis=1)
+        data['Average Stage2 CL Distance Speed Collect Result_Dam'] = data[cols_to_average[8:]].mean(axis=1)
+        data = data.drop(columns=cols_to_average)
+
+        # 추가적인 상호작용 피처 생성
+        # 속도와 시간의 조합으로 새로운 피처 생성 (예: 거리 계산)
+        data['Speed_Time_Interaction_Stage1 Result_Dam'] = (
+            data['DISCHARGED SPEED OF RESIN Collect Result_Dam'] * 
+            data['DISCHARGED TIME OF RESIN(Stage1) Collect Result_Dam']
+        )
+
+        data['Speed_Time_Interaction_Stage2 Result_Dam'] = (
+            data['DISCHARGED SPEED OF RESIN Collect Result_Dam'] * 
+            data['DISCHARGED TIME OF RESIN(Stage2) Collect Result_Dam']
+        )
+
+
+        data['Total Speed_Time Result_Dam'] = data['Speed_Time_Interaction_Stage1 Result_Dam']+data['Speed_Time_Interaction_Stage2 Result_Dam']
+
+        # 도메인 지식을 활용한 피처 생성: 예를 들어 레진 분사 과정에서 발생할 수 있는 레진 양과 관련된 계산
+        data['Total_Dispense_Volume Result_Dam'] = (
+            data['Dispense Volume(Stage1) Collect Result_Dam'] +
+            data['Dispense Volume(Stage2) Collect Result_Dam']
+        )
+        data['CURE POSITION X Collect Result_Dam'] = abs(data['CURE START POSITION X Collect Result_Dam']-data['CURE END POSITION X Collect Result_Dam'])
+        data['CURE POSITION Z Collect Result_Dam'] = abs(data['CURE START POSITION Z Collect Result_Dam']-data['CURE END POSITION Z Collect Result_Dam'])
+        data['CURE POSITION Θ Collect Result_Dam'] = abs(data['CURE START POSITION Θ Collect Result_Dam']-data['CURE END POSITION Θ Collect Result_Dam'])
+
+        # data['CURE TIME X Collect Result_Dam'] = abs(data['CURE START POSITION X Collect Result_Dam']-data['CURE END POSITION X Collect Result_Dam'])/data['CURE SPEED Collect Result_Dam']
+        # data['CURE TIME Z Collect Result_Dam'] = abs(data['CURE START POSITION Z Collect Result_Dam']-data['CURE END POSITION Z Collect Result_Dam'])/data['CURE SPEED Collect Result_Dam']
+        # data['CURE TIME Θ Collect Result_Dam'] = abs(data['CURE START POSITION Θ Collect Result_Dam']-data['CURE END POSITION Θ Collect Result_Dam'])/data['CURE SPEED Collect Result_Dam']
+
+        # a = abs(data['CURE START POSITION X Collect Result_Dam']-data['CURE END POSITION X Collect Result_Dam'])/data['CURE SPEED Collect Result_Dam']
+        # b = abs(data['CURE START POSITION Z Collect Result_Dam']-data['CURE END POSITION Z Collect Result_Dam'])/data['CURE SPEED Collect Result_Dam']
+        # c = abs(data['CURE START POSITION Θ Collect Result_Dam']-data['CURE END POSITION Θ Collect Result_Dam'])/data['CURE SPEED Collect Result_Dam']
+
+        # data['CURE PT X Collect Result_Dam'] = data['CURE POSITION X Collect Result_Dam']*a
+        # data['CURE PT Z Collect Result_Dam'] = data['CURE POSITION Z Collect Result_Dam']*b
+        # data['CURE PT Θ Collect Result_Dam'] = data['CURE POSITION Θ Collect Result_Dam']*c
+
+        data['CURE DT X Collect Result_Dam'] = abs(data['CURE START POSITION X Collect Result_Dam']-data['CURE END POSITION X Collect Result_Dam'])*data['CURE SPEED Collect Result_Dam']
+        data['CURE DT Z Collect Result_Dam'] = abs(data['CURE START POSITION Z Collect Result_Dam']-data['CURE END POSITION Z Collect Result_Dam'])*data['CURE SPEED Collect Result_Dam']
+        data['CURE DT Θ Collect Result_Dam'] = abs(data['CURE START POSITION Θ Collect Result_Dam']-data['CURE END POSITION Θ Collect Result_Dam'])*data['CURE SPEED Collect Result_Dam']
+
+        # 기존 열 삭제
+        data = data.drop(columns=[
+                                'CURE START POSITION X Collect Result_Dam','CURE START POSITION Θ Collect Result_Dam',
+                                'CURE END POSITION X Collect Result_Dam','CURE END POSITION Z Collect Result_Dam','CURE END POSITION Θ Collect Result_Dam',
+                                'CURE SPEED Collect Result_Dam',
+                                        ])
+
+        data['THICKNESS_Range_Collect_Result_Dam'] = (
+            data[['THICKNESS 1 Collect Result_Dam', 'THICKNESS 2 Collect Result_Dam', 'THICKNESS 3 Collect Result_Dam']].max(axis=1) -
+            data[['THICKNESS 1 Collect Result_Dam', 'THICKNESS 2 Collect Result_Dam', 'THICKNESS 3 Collect Result_Dam']].min(axis=1)
+                )
+        # data['THICKNESS_Avg_Collect_Result_Dam'] = (
+        #     data['THICKNESS 1 Collect Result_Dam'] +
+        #     data['THICKNESS 2 Collect Result_Dam'] +
+        #     data['THICKNESS 3 Collect Result_Dam']
+        # ) / 3
+
+        # data['THICKNESS_StdDev_Collect_Result_Dam'] = data[
+        #     ['THICKNESS 1 Collect Result_Dam', 'THICKNESS 2 Collect Result_Dam', 'THICKNESS 3 Collect Result_Dam']
+        # ].std(axis=1)
 
         return data #전처리 된 데이터 반환
-    
+            
 
     def fill1(self, data):
         #
