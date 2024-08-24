@@ -1,21 +1,86 @@
-# 전처리 클래스 만들기
-# 멤버 변수로 데이터프레임을 받아서 전처리를 수행하는 클래스를 만들어보자
-
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
+# 전처리 클래스
+# 입력은 train_begin, test_begin을 권장한다.
 class Preprocessing:
-    def __init__(self, data):
-        self.data = data
+    # 멤버 변수
+    data = None # same_data를 저장하는 변수
+    submission_diff = None 
+    label_encoder = None
+
+
+    def __init__(self, train_data, test_data):
+        # 1. 입력받은 train, test 데이터 합치기.(concat)
+        # 2. Equipment(Line #1, #2)와 PalletID와 Production Qty가 모두 같은 데이터는 same_data에 저장, 그렇지 않은 데이터는 diff_data에 저장
+        # 3. diff_data의 target이 nan인 데이터만 추출하여 diff_test에 저장 후 target을 'AbNormal'로 변경 -> submission_diff에 Set ID와 target만 저장
+        # 4. same_data와 submission_diff 반환
+
+
+        all_data = pd.concat([train_data, test_data], sort=False)
+        all_data.reset_index(drop=True, inplace=True) # all_data의 인덱스를 0부터 순차적으로 변경(concat하면 index가 중복될 수 있기 때문에 reset_index() 사용)
+
+        # Equipment_Dam, Equipment_Fill1, Equipment_Fill2의 값을 비교하여 다르면 해당 데이터의 인덱스를 index_of_diff, 같으면 index_of_same 저장
+        index_of_diff = []
+        index_of_same = []
+
+        dam_values = all_data['Equipment_Dam'].values
+        fill1_values = all_data['Equipment_Fill1'].values
+        fill2_values = all_data['Equipment_Fill2'].values
+
+        index_of_diff = np.where((dam_values != fill1_values) | (dam_values != fill2_values))[0].tolist()
+        index_of_same = np.where((dam_values == fill1_values) & (dam_values == fill2_values))[0].tolist()
+
+
+        # PalletID Collect Result_Dam, PalletID Collect Result_Fill1, PalletID Collect Result_Dam 의 값을 비교하여 다르면 해당 데이터의 인덱스를 index_of_diff, 같으면 index_of_same append
+        index_of_diff2 = []
+        index_of_same2 = []
+
+        dam_values = all_data['PalletID Collect Result_Dam'].values
+        fill1_values = all_data['PalletID Collect Result_Fill1'].values
+        fill2_values = all_data['PalletID Collect Result_Fill2'].values
+
+        index_of_diff2 = np.where((dam_values != fill1_values) | (dam_values != fill2_values))[0].tolist()
+        index_of_same2 = np.where((dam_values == fill1_values) & (dam_values == fill2_values))[0].tolist()
+
+
+        # Production Qty Collect Result_Dam, Production Qty Collect Result_Fill1, Production Qty Collect Result_Fill2의 값을 비교하여 다르면 해당 데이터의 인덱스를 index_of_diff, 같으면 index_of_same append
+        index_of_diff3 = []
+        index_of_same3 = []
+
+        dam_values = all_data['Production Qty Collect Result_Dam'].values
+        fill1_values = all_data['Production Qty Collect Result_Fill1'].values
+        fill2_values = all_data['Production Qty Collect Result_Fill2'].values
+
+        index_of_diff3 = np.where((dam_values != fill1_values) | (dam_values != fill2_values))[0].tolist()
+        index_of_same3 = np.where((dam_values == fill1_values) & (dam_values == fill2_values))[0].tolist()
+
+        # 3개의 필터링 결과 합치기
+        index_of_diff_total = list(set(index_of_diff + index_of_diff2 + index_of_diff3))
+
+        # index_of_diff_total의 중복값 제거
+        index_of_diff_total = list(set(index_of_diff_total))
+
+
+        # index_of_diff_total에 해당하는 데이터를 diff_data에 저장하고, 해당하지 않는 나머지 데이터를 same_data에 저장
+        diff_data = all_data.loc[index_of_diff_total]
+        same_data = all_data.drop(index=index_of_diff_total)
+
+        # diff_data의 'target' 컬럼이 nan인 행만 추출하여 diff_test에 저장
+        diff_test = diff_data[diff_data['target'].isnull()]
+
+        # diff_test의 'target' 컬럼의 값을 모두 'AbNormal'로 변경
+        diff_test['target'] = 'AbNormal'
+
+        # diff_test의 'Set ID'와 'target' 컬럼만 선택하여 submission_diff에 저장
+        submission_diff = diff_test[['Set ID', 'target']].copy()
+
+        self.data = same_data
+        self.submission_diff = submission_diff
         self.label_encoder = LabelEncoder()
-        
-    
-    def distingush_always_AbNormal(self, data):
-        
 
-
-        return data_same, data_diff #전처리 된 데이터 반환
+        
     
     def dam(self, data):
         
@@ -104,6 +169,13 @@ class Preprocessing:
     
 
     def autoclave(self, data):
-        #
+        
+        # Model.Suffix_AutoClave, Workorder_AutoClave 컬럼 제거
+        data = data.drop(columns=['Model.Suffix_AutoClave', 'Workorder_AutoClave'])
+
+        # Pressure Amount 컬럼 만들기
+        pressure_amount = data['1st Pressure Collect Result_AutoClave'] * data['1st Pressure 1st Pressure Unit Time_AutoClave']
+        pressure_amount += data['2nd Pressure Collect Result_AutoClave'] * data['2nd Pressure Unit Time_AutoClave']
+        pressure_amount += data['3rd Pressure Collect Result_AutoClave'] * data['3rd Pressure Unit Time_AutoClave']
 
         return data #전처리 된 데이터 반환
