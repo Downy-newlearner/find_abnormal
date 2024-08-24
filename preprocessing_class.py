@@ -190,10 +190,85 @@ class Preprocessing:
             
 
     def fill1(self, data):
-        #
+        # 제거할 변수
+        drop_cols = [
+            'Equipment_Fill1',
+            'Model.Suffix_Fill1',
+            'Workorder_Fill1',
+            'PalletID Collect Result_Fill1',
+            'Production Qty Collect Result_Fill1',
+            'Receip No Collect Result_Fill1'
+        ]
+        
+        # 각 Stage에서의 DISCHARGED 양 계산
+        # data['DISCHARGED_AMOUNT_STAGE1'] = data['DISCHARGED SPEED OF RESIN Collect Result_Fill1'] * data['DISCHARGED TIME OF RESIN(Stage1) Collect Result_Fill1']
+        # data['DISCHARGED_AMOUNT_STAGE2'] = data['DISCHARGED SPEED OF RESIN Collect Result_Fill1'] * data['DISCHARGED TIME OF RESIN(Stage2) Collect Result_Fill1']
+        # data['DISCHARGED_AMOUNT_STAGE3'] = data['DISCHARGED SPEED OF RESIN Collect Result_Fill1'] * data['DISCHARGED TIME OF RESIN(Stage3) Collect Result_Fill1']
 
-        return data #전처리 된 데이터 반환
-    
+        # Dispense 양과 DISCHARGED 양의 상관계수 계산
+        # Stage 1 Correlation: 0.9795678484346679
+        # Stage 2 Correlation: 0.9986658296558463
+        # Stage 3 Correlation: 0.9571706530033417
+        
+        # Dispense Volume Collect Result_Fill1 만 사용하기로 결정
+        data['Dispense Volume Collect Result_Fill1'] = list(zip(data['Dispense Volume(Stage1) Collect Result_Fill1'],
+                                        data['Dispense Volume(Stage2) Collect Result_Fill1'],
+                                        data['Dispense Volume(Stage3) Collect Result_Fill1']))
+        data = data.drop(columns=[
+            'Dispense Volume(Stage1) Collect Result_Fill1',
+            'Dispense Volume(Stage2) Collect Result_Fill1',
+            'Dispense Volume(Stage3) Collect Result_Fill1'], errors='ignore')
+        
+        # DISCHARGED와 SPEED 삭제
+        data = data.drop(columns=[
+            'DISCHARGED SPEED OF RESIN Collect Result_Fill1',
+            'DISCHARGED TIME OF RESIN(Stage1) Collect Result_Fill1',
+            'DISCHARGED TIME OF RESIN(Stage2) Collect Result_Fill1',
+            'DISCHARGED TIME OF RESIN(Stage3) Collect Result_Fill1'], errors='ignore')
+        
+        # HEAD NORMAL COORDINATE X AXIS(1, 2, 3)
+        data['HEAD NORMAL COORDINATE X AXIS(1, 2, 3)'] = list(zip(data['HEAD NORMAL COORDINATE X AXIS(Stage1) Collect Result_Fill1'],
+                                        data['HEAD NORMAL COORDINATE X AXIS(Stage2) Collect Result_Fill1'],
+                                        data['HEAD NORMAL COORDINATE X AXIS(Stage3) Collect Result_Fill1']))
+        
+        # HEAD NORMAL COORDINATE Y AXIS(1, 2, 3)
+        """
+        data['HEAD NORMAL COORDINATE Y AXIS(1, 2, 3)'] = list(zip(data['HEAD NORMAL COORDINATE Y AXIS(Stage1) Collect Result_Fill1'],
+                                        data['HEAD NORMAL COORDINATE Y AXIS(Stage2) Collect Result_Fill1'],
+                                        data['HEAD NORMAL COORDINATE Y AXIS(Stage3) Collect Result_Fill1']))
+        """
+                
+        data['HEAD NORMAL COORDINATE Y AXIS(1, 2, 3)'] = (
+            (data['HEAD NORMAL COORDINATE Y AXIS(Stage1) Collect Result_Fill1'] + data['HEAD NORMAL COORDINATE Y AXIS(Stage2) Collect Result_Fill1'] + data['HEAD NORMAL COORDINATE Y AXIS(Stage3) Collect Result_Fill1']) / 3
+        )
+        
+        # HEAD NORMAL COORDINATE Z AXIS(1, 2, 3)
+        """
+        data['HEAD NORMAL COORDINATE Z AXIS(1, 2, 3)'] = list(zip(data['HEAD NORMAL COORDINATE Z AXIS(Stage1) Collect Result_Fill1'],
+                                        data['HEAD NORMAL COORDINATE Z AXIS(Stage2) Collect Result_Fill1'],
+                                        data['HEAD NORMAL COORDINATE Z AXIS(Stage3) Collect Result_Fill1']))
+        """
+        
+        data['HEAD NORMAL COORDINATE Z AXIS(1, 2, 3)'] = (
+            (data['HEAD NORMAL COORDINATE Z AXIS(Stage1) Collect Result_Fill1'] + data['HEAD NORMAL COORDINATE Z AXIS(Stage2) Collect Result_Fill1'] + data['HEAD NORMAL COORDINATE Z AXIS(Stage3) Collect Result_Fill1']) / 3
+        )
+        
+        # 사용한 칼럼 제거
+        data = data.drop(columns=[
+            'HEAD NORMAL COORDINATE X AXIS(Stage1) Collect Result_Fill1',
+            'HEAD NORMAL COORDINATE X AXIS(Stage2) Collect Result_Fill1',
+            'HEAD NORMAL COORDINATE X AXIS(Stage3) Collect Result_Fill1',
+            'HEAD NORMAL COORDINATE Y AXIS(Stage1) Collect Result_Fill1',
+            'HEAD NORMAL COORDINATE Y AXIS(Stage2) Collect Result_Fill1',
+            'HEAD NORMAL COORDINATE Y AXIS(Stage3) Collect Result_Fill1',
+            'HEAD NORMAL COORDINATE Z AXIS(Stage1) Collect Result_Fill1',
+            'HEAD NORMAL COORDINATE Z AXIS(Stage2) Collect Result_Fill1',
+            'HEAD NORMAL COORDINATE Z AXIS(Stage3) Collect Result_Fill1'], errors='ignore')
+        
+        # drop_cols 제거
+        data = data.drop(columns=drop_cols, errors='ignore')
+        
+        return data #전처리 된 데이터 반환  
     
     def fill2(self, data):
 
