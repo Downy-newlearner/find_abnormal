@@ -1,6 +1,30 @@
+# 전처리 패키지
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
+from imblearn.over_sampling import SMOTE
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.decomposition import PCA
+
+
+# 모델링 패키지
+from sklearn.ensemble import RandomForestClassifier
+# from catboost import CatBoostClassifier
+# from xgboost import XGBClassifier
+# from lightgbm import LGBMClassifier
+
+
+# 모델 평가 및 검증 패키지
+from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
+from sklearn.metrics import accuracy_score, classification_report, f1_score
+
+
+# 기타 패키지
+import random
+import os
+from datetime import datetime
+import time
+import math
+
 
 # 전처리 클래스
 # 입력은 train_begin, test_begin을 권장한다.
@@ -9,7 +33,11 @@ class Preprocessing:
     data = None # same_data를 저장하는 변수
     submission_diff = None 
     label_encoder = None
-
+    X_train = None
+    X_val = None
+    y_train = None
+    y_val = None
+    X_test = None
 
     def __init__(self, train_data, test_data):
         # 1. 입력받은 train, test 데이터 합치기.(concat)
@@ -17,9 +45,37 @@ class Preprocessing:
         # 3. diff_data의 target이 nan인 데이터만 추출하여 diff_test에 저장 후 target을 'AbNormal'로 변경 -> submission_diff에 Set ID와 target만 저장
         # 4. same_data와 submission_diff 반환
 
-
         data = pd.concat([train_data, test_data], sort=False)
         data.reset_index(drop=True, inplace=True) # data의 인덱스를 0부터 순차적으로 변경(concat하면 index가 중복될 수 있기 때문에 reset_index() 사용)
+
+        le = LabelEncoder()
+
+        # 1) Equipment_Suffix 컬럼을 Label Encoding하기
+        suffixes = ['Dam', 'Fill1', 'Fill2']
+        for suffix in suffixes:
+            for column in [f'Equipment_{suffix}']:
+                data[column] = data[column].astype(str)
+                le.fit(data[column])
+                data[column] = le.transform(data[column])
+
+
+        # 2) Model.Suffix_Dam, Workorder_Dam 컬럼을 Label Encoding하기
+        li = ['Model.Suffix_Dam','Workorder_Dam']
+        for column in li:
+            data[column] = data[column].astype(str)
+            le.fit(data[column])
+            data[column] = le.transform(data[column])
+
+        # 3) Chamber Temp. Judge Value_AutoClave(탈포 판단값) 컬럼을 Label Encoding하기
+        data['Chamber Temp. Judge Value_AutoClave'] = data['Chamber Temp. Judge Value_AutoClave'].astype(str)
+        le.fit(data['Chamber Temp. Judge Value_AutoClave'])
+        data['Chamber Temp. Judge Value_AutoClave'] = le.transform(data['Chamber Temp. Judge Value_AutoClave'])
+
+        # 4) GMES_ORIGIN_INSP_JUDGE_CODE Judge Value_AutoClave 컬럼을 Label Encoding하기
+        data['GMES_ORIGIN_INSP_JUDGE_CODE Collect Result_AutoClave'] = data['GMES_ORIGIN_INSP_JUDGE_CODE Collect Result_AutoClave'].astype(str)
+        le.fit(data['GMES_ORIGIN_INSP_JUDGE_CODE Collect Result_AutoClave'])
+        data['GMES_ORIGIN_INSP_JUDGE_CODE Collect Result_AutoClave'] = le.transform(data['GMES_ORIGIN_INSP_JUDGE_CODE Collect Result_AutoClave'])
+        data = data.drop(columns='GMES_ORIGIN_INSP_JUDGE_CODE Judge Value_AutoClave')
 
         # Equipment_Dam, Equipment_Fill1, Equipment_Fill2의 값을 비교하여 다르면 해당 데이터의 인덱스를 index_of_diff, 같으면 index_of_same 저장
         index_of_diff = []
@@ -355,3 +411,121 @@ class Preprocessing:
         pressure_amount += data['3rd Pressure Collect Result_AutoClave'] * data['3rd Pressure Unit Time_AutoClave']
 
         return data #전처리 된 데이터 반환
+
+    def final_preprocessing(self):
+        all_data = self.data.copy()
+
+        # 불필요한 칼럼 제거
+        unnecessary_columns =['Model.Suffix_AutoClave','Model.Suffix_Fill1','Model.Suffix_Fill2',
+            'Workorder_AutoClave','Workorder_Fill1','Workorder_Fill2',
+            'Receip No Collect Result_Fill1','Receip No Collect Result_Fill2',]
+        
+        for column in unnecessary_columns:
+            if column in all_data.columns:
+                all_data.drop(columns=[column], inplace=True)
+
+
+        # 1. 비대칭성이 높은 칼럼에 대한 정규화(로그 변환) 및 표준화
+        a=[]
+        for c in all_data.columns:
+            if all_data[c].nunique()==1:
+                a.append(c)
+        all_data.drop(columns=a, inplace=True)
+
+        # 모든 칼럼의 왜도(Skewness) 계산
+        train_data = all_data[pd.notnull(all_data['target'])]
+        X = train_data.drop(columns=['target','Set ID'])
+        skewness = X.skew().sort_values(ascending=False)
+
+        # 비대칭성이 높은 칼럼(왜도의 절대값이 1보다 큰 칼럼) 추출
+        high_skew_cols_list = skewness[abs(skewness) > 1].index.tolist()
+
+        # 로그 변환을 위한 작은 상수 추가
+        epsilon = 1e-6
+
+        # 로그 변환을 적용할 칼럼 리스트에서 'PalletID'와 'Production Qty'를 제외
+        high_skew_cols_list = [col for col in high_skew_cols_list if col not in ['PalletID', 'Production Qty']]
+
+        # 로그 변환 적용
+        for col in high_skew_cols_list:
+            if any(all_data[col] <= 0):  # 0 또는 음수 값이 있는 경우 상수 추가
+                all_data[col] = np.log1p(all_data[col] + epsilon)
+            else:
+                all_data[col] = np.log1p(all_data[col])
+
+        # 표준화
+        scaler = StandardScaler()
+        all_data[high_skew_cols_list] = scaler.fit_transform(all_data[high_skew_cols_list])
+
+
+
+
+        # 2. LabelEncoder 초기화
+        le = LabelEncoder()
+
+        train_data = all_data[pd.notnull(all_data['target'])] # train 데이터 추출: 'target' 컬럼이 NaN이 아닌 데이터
+
+        # target과 feature 분리
+        train_data['target'] = train_data['target'].astype(str)  # target 변수
+        train_data['target'] = le.fit_transform(train_data['target'])  # target 변수를 숫자로 변환
+
+        # 상관계수 계산
+        correlation_matrix = train_data.corr()
+
+        # target과의 상관계수 추출 및 절대값 기준 상위 20개 선택
+        target_corr = correlation_matrix['target'].abs().sort_values(ascending=False).head(40)
+
+        top_10_corr = target_corr.head(20)
+        print("Top 20 Correlations with Target:")
+        print(top_10_corr)
+
+        # 상위 20개의 피처 목록 추출 (target 포함)
+        top_features = target_corr.index.tolist()
+        top_features.append('Equipment_Dam')
+        # all_data에서 상위 20개의 피처만 선택
+        all_data_top20 = all_data[top_features]
+
+
+
+
+        # 3. PCA 적용
+        # all_data_top20 - (target이 null이 아닌 train 데이터 추출) -> train_data - (target 드랍) -> features - (정규화) -> scaled_features - (PCA 적용) -> pca_features
+        train_data = all_data_top20[pd.notnull(all_data['target'])]
+        test_data = all_data_top20[pd.isnull(all_data_top20['target'])]
+        test_x = test_data.drop(columns=['target'])
+
+        # 타겟 변수를 제외한 피처들만 사용
+        features = train_data.drop(columns=['target'])
+
+        # 데이터 정규화
+        scaler = StandardScaler()
+        scaled_features_train = scaler.fit_transform(features)
+        scaled_features_test = scaler.fit_transform(test_x)
+
+
+        # PCA 적용
+        pca = PCA(n_components=0.95)  # 설명 분산의 95%를 유지하도록 설정
+        pca_features_train = pca.fit_transform(scaled_features_train)
+        pca_features_test = pca.fit_transform(scaled_features_test)
+
+        self.X_test = pca_features_test
+
+
+
+        # 4. SMOTE 적용 및 train_test_split
+        target = train_data['target']
+
+        target = target.astype(str)
+        target = le.fit_transform(target)
+
+        # 데이터 분리 (학습용 80%, 검증용 20%)
+        X_train, X_val, y_train, y_val = train_test_split(pca_features_train, target, test_size=0.2, random_state=42)
+
+        # SMOTE 적용
+        smote = SMOTE(random_state=42)
+        X_train_smote, y_train_smote = smote.fit_resample(X_train, y_train)
+
+        self.X_train = X_train_smote
+        self.X_test = X_val
+        self.y_train = y_train_smote
+        self.y_test = y_val
