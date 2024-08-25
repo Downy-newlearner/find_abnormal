@@ -138,7 +138,9 @@ class Preprocessing:
 
         
     
-    def dam(self, data):
+    def dam(self):
+        print("preprocessing - dam")
+        data = self.data.copy()
         columns1 = [
             'Stage1 Line1 Distance Speed Collect Result_Dam',
             'Stage1 Line2 Distance Speed Collect Result_Dam',
@@ -158,6 +160,18 @@ class Preprocessing:
 
         # 주어진 칼럼들에서 편차를 계산하는 코드
         data['Stage2_Distance_Speed_StdDev'] = data[columns2].std(axis=1)
+
+        columns3 = [
+            'Stage3 Line1 Distance Speed Collect Result_Dam',
+            'Stage3 Line2 Distance Speed Collect Result_Dam',
+            'Stage3 Line3 Distance Speed Collect Result_Dam',
+            'Stage3 Line4 Distance Speed Collect Result_Dam'
+        ]
+
+        # 주어진 칼럼들에서 편차를 계산하는 코드
+        data['Stage3_Distance_Speed_StdDev'] = data[columns3].std(axis=1)
+
+
         # 열 목록 정의
         cols_to_average = ['Stage1 Circle1 Distance Speed Collect Result_Dam',
             'Stage1 Circle2 Distance Speed Collect Result_Dam',
@@ -175,10 +189,19 @@ class Preprocessing:
             'Stage2 Line2 Distance Speed Collect Result_Dam',
             'Stage2 Line3 Distance Speed Collect Result_Dam',
             'Stage2 Line4 Distance Speed Collect Result_Dam',
+            'Stage3 Circle1 Distance Speed Collect Result_Dam',
+            'Stage3 Circle2 Distance Speed Collect Result_Dam',
+            'Stage3 Circle3 Distance Speed Collect Result_Dam',
+            'Stage3 Circle4 Distance Speed Collect Result_Dam',
+            'Stage3 Line1 Distance Speed Collect Result_Dam',
+            'Stage3 Line2 Distance Speed Collect Result_Dam',
+            'Stage3 Line3 Distance Speed Collect Result_Dam',
+            'Stage3 Line4 Distance Speed Collect Result_Dam',
 
         ]
         data['Average Stage1 CL Distance Speed Collect Result_Dam'] = data[cols_to_average[:8]].mean(axis=1)
-        data['Average Stage2 CL Distance Speed Collect Result_Dam'] = data[cols_to_average[8:]].mean(axis=1)
+        data['Average Stage2 CL Distance Speed Collect Result_Dam'] = data[cols_to_average[8:16]].mean(axis=1)
+        data['Average Stage3 CL Distance Speed Collect Result_Dam'] = data[cols_to_average[16:]].mean(axis=1)
         data = data.drop(columns=cols_to_average)
 
         # 추가적인 상호작용 피처 생성
@@ -192,14 +215,19 @@ class Preprocessing:
             data['DISCHARGED SPEED OF RESIN Collect Result_Dam'] * 
             data['DISCHARGED TIME OF RESIN(Stage2) Collect Result_Dam']
         )
+        data['Speed_Time_Interaction_Stage3 Result_Dam'] = (
+            data['DISCHARGED SPEED OF RESIN Collect Result_Dam'] * 
+            data['DISCHARGED TIME OF RESIN(Stage3) Collect Result_Dam']
+        )
 
 
-        data['Total Speed_Time Result_Dam'] = data['Speed_Time_Interaction_Stage1 Result_Dam']+data['Speed_Time_Interaction_Stage2 Result_Dam']
+        data['Total Speed_Time Result_Dam'] = data['Speed_Time_Interaction_Stage1 Result_Dam']+data['Speed_Time_Interaction_Stage2 Result_Dam']+data['Speed_Time_Interaction_Stage3 Result_Dam']
 
         # 도메인 지식을 활용한 피처 생성: 예를 들어 레진 분사 과정에서 발생할 수 있는 레진 양과 관련된 계산
         data['Total_Dispense_Volume Result_Dam'] = (
             data['Dispense Volume(Stage1) Collect Result_Dam'] +
-            data['Dispense Volume(Stage2) Collect Result_Dam']
+            data['Dispense Volume(Stage2) Collect Result_Dam']+
+            data['Dispense Volume(Stage3) Collect Result_Dam']
         )
         data['CURE POSITION X Collect Result_Dam'] = abs(data['CURE START POSITION X Collect Result_Dam']-data['CURE END POSITION X Collect Result_Dam'])
         data['CURE POSITION Z Collect Result_Dam'] = abs(data['CURE START POSITION Z Collect Result_Dam']-data['CURE END POSITION Z Collect Result_Dam'])
@@ -242,10 +270,14 @@ class Preprocessing:
         #     ['THICKNESS 1 Collect Result_Dam', 'THICKNESS 2 Collect Result_Dam', 'THICKNESS 3 Collect Result_Dam']
         # ].std(axis=1)
 
-        return data #전처리 된 데이터 반환
+        self.data = data
             
 
-    def fill1(self, data):
+    def fill1(self):
+        print("preprocessing - fill1")
+
+        data = self.data.copy()
+
         # 제거할 변수
         drop_cols = [
             'Equipment_Fill1',
@@ -308,6 +340,7 @@ class Preprocessing:
         data['HEAD NORMAL COORDINATE Z AXIS(1, 2, 3)'] = (
             (data['HEAD NORMAL COORDINATE Z AXIS(Stage1) Collect Result_Fill1'] + data['HEAD NORMAL COORDINATE Z AXIS(Stage2) Collect Result_Fill1'] + data['HEAD NORMAL COORDINATE Z AXIS(Stage3) Collect Result_Fill1']) / 3
         )
+
         
         # 사용한 칼럼 제거
         data = data.drop(columns=[
@@ -324,9 +357,13 @@ class Preprocessing:
         # drop_cols 제거
         data = data.drop(columns=drop_cols, errors='ignore')
         
-        return data #전처리 된 데이터 반환  
+        self.data = data
+        
     
-    def fill2(self, data):
+    def fill2(self):
+        print("preprocessing - fill2")
+        data = self.data.copy()
+
 
         # 제거할 변수 이름 
         drop_cols = [
@@ -397,10 +434,13 @@ class Preprocessing:
         data = data.drop(columns=drop_cols, errors='ignore')
 
 
-        return data #전처리 된 데이터 반환
+        self.data = data
+
     
 
-    def autoclave(self, data):
+    def autoclave(self):
+        print("preprocessing - autoclave")
+        data = self.data.copy()
         
         # Model.Suffix_AutoClave, Workorder_AutoClave 컬럼 제거
         data = data.drop(columns=['Model.Suffix_AutoClave', 'Workorder_AutoClave'])
@@ -410,21 +450,25 @@ class Preprocessing:
         pressure_amount += data['2nd Pressure Collect Result_AutoClave'] * data['2nd Pressure Unit Time_AutoClave']
         pressure_amount += data['3rd Pressure Collect Result_AutoClave'] * data['3rd Pressure Unit Time_AutoClave']
 
-        return data #전처리 된 데이터 반환
+        self.data = data
+       
 
     def final_preprocessing(self):
+        print("final preprocessing")
         all_data = self.data.copy()
+        print(f"all_data shape: {all_data.shape}")
 
         # 불필요한 칼럼 제거
         unnecessary_columns =['Model.Suffix_AutoClave','Model.Suffix_Fill1','Model.Suffix_Fill2',
             'Workorder_AutoClave','Workorder_Fill1','Workorder_Fill2',
             'Receip No Collect Result_Fill1','Receip No Collect Result_Fill2',]
         
+        
         for column in unnecessary_columns:
             if column in all_data.columns:
                 all_data.drop(columns=[column], inplace=True)
 
-
+        print("section 1")
         # 1. 비대칭성이 높은 칼럼에 대한 정규화(로그 변환) 및 표준화
         a=[]
         for c in all_data.columns:
@@ -435,6 +479,13 @@ class Preprocessing:
         # 모든 칼럼의 왜도(Skewness) 계산
         train_data = all_data[pd.notnull(all_data['target'])]
         X = train_data.drop(columns=['target','Set ID'])
+
+        # train_data의 컬럼 중 object형 컬럼을 제외한 컬럼만 선택
+        X = X.select_dtypes(exclude='object')
+
+        for col in X.columns:
+            # 각 컬럼의 dtype 출력
+            print(f'{col} dtype: {X[col].dtype}')
         skewness = X.skew().sort_values(ascending=False)
 
         # 비대칭성이 높은 칼럼(왜도의 절대값이 1보다 큰 칼럼) 추출
@@ -453,6 +504,8 @@ class Preprocessing:
             else:
                 all_data[col] = np.log1p(all_data[col])
 
+        print("section 2")
+
         # 표준화
         scaler = StandardScaler()
         all_data[high_skew_cols_list] = scaler.fit_transform(all_data[high_skew_cols_list])
@@ -460,57 +513,85 @@ class Preprocessing:
 
 
 
+        print("section 3")
+
         # 2. LabelEncoder 초기화
         le = LabelEncoder()
 
         train_data = all_data[pd.notnull(all_data['target'])] # train 데이터 추출: 'target' 컬럼이 NaN이 아닌 데이터
-
+        print("train_data shape: ", train_data.shape)
         # target과 feature 분리
         train_data['target'] = train_data['target'].astype(str)  # target 변수
         train_data['target'] = le.fit_transform(train_data['target'])  # target 변수를 숫자로 변환
 
-        # 상관계수 계산
-        correlation_matrix = train_data.corr()
+        # train_data에서 object형 컬럼에 대한 Label Encoding
+        for column in train_data.select_dtypes(include='object').columns:
+            train_data[column] = train_data[column].astype(str)
+            le.fit(train_data[column])
+            train_data[column] = le.transform(train_data[column])
 
-        # target과의 상관계수 추출 및 절대값 기준 상위 20개 선택
-        target_corr = correlation_matrix['target'].abs().sort_values(ascending=False).head(40)
-
-        top_10_corr = target_corr.head(20)
-        print("Top 20 Correlations with Target:")
-        print(top_10_corr)
-
-        # 상위 20개의 피처 목록 추출 (target 포함)
-        top_features = target_corr.index.tolist()
-        top_features.append('Equipment_Dam')
-        # all_data에서 상위 20개의 피처만 선택
-        all_data_top20 = all_data[top_features]
-
-
-
+        print("section 4")
+        print("train_data shape111: ", train_data.shape)
 
         # 3. PCA 적용
-        # all_data_top20 - (target이 null이 아닌 train 데이터 추출) -> train_data - (target 드랍) -> features - (정규화) -> scaled_features - (PCA 적용) -> pca_features
-        train_data = all_data_top20[pd.notnull(all_data['target'])]
-        test_data = all_data_top20[pd.isnull(all_data_top20['target'])]
+        # train_data - (target 드랍) -> features - (정규화) -> scaled_features - (PCA 적용) -> pca_features
+        train_data = train_data.drop(columns=['Set ID'])
+        test_data = all_data[pd.isnull(all_data['target'])]
         test_x = test_data.drop(columns=['target'])
+        # all_data에서 'target'이 nan인 데이터만 추출하여 test_data에 저장
+        test_Set_ID = test_x['Set ID']
+
+        # test_x에서 object형 컬럼에 대한 Label Encoding
+        for column in test_x.select_dtypes(include='object').columns:
+            test_x[column] = test_x[column].astype(str)
+            le.fit(test_x[column])
+            test_x[column] = le.transform(test_x[column])
+        print("train_data shape222: ", train_data.shape)
+
 
         # 타겟 변수를 제외한 피처들만 사용
-        features = train_data.drop(columns=['target'])
+        features = train_data.drop(columns=['target', 'HEAD NORMAL COORDINATE X AXIS(1, 2, 3)', 'Dispense Volume Collect Result_Fill1'])
 
-        # 데이터 정규화
+        print("features shape: ", features.shape)
+
+        temp_drop = train_data[['HEAD NORMAL COORDINATE X AXIS(1, 2, 3)', 'Dispense Volume Collect Result_Fill1']]
+        test_x_before_concat = test_x.drop(columns=['HEAD NORMAL COORDINATE X AXIS(1, 2, 3)', 'Dispense Volume Collect Result_Fill1', 'Set ID'])
+        test_x_temp = test_x[['HEAD NORMAL COORDINATE X AXIS(1, 2, 3)', 'Dispense Volume Collect Result_Fill1']]
+        
+        # features 데이터프레임에서 수치형 컬럼에 대해서만 데이터 정규화
         scaler = StandardScaler()
         scaled_features_train = scaler.fit_transform(features)
-        scaled_features_test = scaler.fit_transform(test_x)
+
+        print("scaled_features_train shape111: ", scaled_features_train.shape)
+
+        scaled_features_train = pd.DataFrame(scaled_features_train, columns=features.columns)
 
 
-        # PCA 적용
-        pca = PCA(n_components=0.95)  # 설명 분산의 95%를 유지하도록 설정
-        pca_features_train = pca.fit_transform(scaled_features_train)
-        pca_features_test = pca.fit_transform(scaled_features_test)
 
-        self.X_test = pca_features_test
+        scaled_features_test = scaler.transform(test_x_before_concat)
+        scaled_features_test = pd.DataFrame(scaled_features_test, columns=test_x_before_concat.columns)
 
 
+        print("scaled_features_train shape222: ", scaled_features_train.shape)
+
+        X_test = pd.concat([test_x_temp.reset_index(drop=True),scaled_features_test], axis=1)
+        scaled_features_train = pd.concat([scaled_features_train, temp_drop.reset_index(drop=True)], axis=1)
+
+        print("temp_drop shape333: ", temp_drop.shape)
+
+
+        print("scaled_features_train shape333: ", scaled_features_train.shape)
+
+        # scaled_features_train, X_test의 컬럼 순서 맞추기
+        print("X_test shape before: ", X_test.shape)
+
+        X_test = X_test[scaled_features_train.columns]
+        print("X_test shape after: ", X_test.shape)
+
+        self.X_test = X_test
+        self.Set_ID = test_Set_ID
+
+        print("section 5")
 
         # 4. SMOTE 적용 및 train_test_split
         target = train_data['target']
@@ -519,13 +600,108 @@ class Preprocessing:
         target = le.fit_transform(target)
 
         # 데이터 분리 (학습용 80%, 검증용 20%)
-        X_train, X_val, y_train, y_val = train_test_split(pca_features_train, target, test_size=0.2, random_state=42)
+        print("scaled_features_train shape: ", scaled_features_train.shape)
+        X_train, X_val, y_train, y_val = train_test_split(scaled_features_train, target, test_size=0.2, random_state=42)
 
         # SMOTE 적용
         smote = SMOTE(random_state=42)
         X_train_smote, y_train_smote = smote.fit_resample(X_train, y_train)
 
         self.X_train = X_train_smote
-        self.X_test = X_val
+        self.X_val = X_val
         self.y_train = y_train_smote
-        self.y_test = y_val
+        self.y_val = y_val
+
+
+    def final_preprocessing_v2(self):
+        print("Final preprocessing")
+        all_data = self.data.copy()
+        
+        # 불필요한 칼럼 제거
+        unnecessary_columns = [
+            'Model.Suffix_AutoClave', 'Model.Suffix_Fill1', 'Model.Suffix_Fill2',
+            'Workorder_AutoClave', 'Workorder_Fill1', 'Workorder_Fill2',
+            'Receip No Collect Result_Fill1', 'Receip No Collect Result_Fill2'
+        ]
+        
+        all_data.drop(columns=[col for col in unnecessary_columns if col in all_data.columns], inplace=True)
+        
+        print("Section 1")
+        # 1. 고유 값이 1인 칼럼 제거
+        all_data.drop(columns=[c for c in all_data if all_data[c].nunique() == 1], inplace=True)
+
+        # 모든 칼럼의 왜도(Skewness) 계산
+        train_data = all_data[all_data['target'].notnull()]
+        X = train_data.drop(columns=['target', 'Set ID']).select_dtypes(exclude='object')
+
+        # 왜도 계산 및 비대칭성이 높은 칼럼 추출
+        skewness = X.skew().sort_values(ascending=False)
+        high_skew_cols_list = skewness[abs(skewness) > 1].index.tolist()
+        
+        # 로그 변환을 위한 상수 추가
+        epsilon = 1e-6
+        high_skew_cols_list = [col for col in high_skew_cols_list if col not in ['PalletID', 'Production Qty']]
+        
+        # 로그 변환 적용
+        for col in high_skew_cols_list:
+            all_data[col] = np.log1p(all_data[col] + epsilon) if any(all_data[col] <= 0) else np.log1p(all_data[col])
+
+        print("Section 2")
+
+        # 표준화
+        scaler = StandardScaler()
+        all_data[high_skew_cols_list] = scaler.fit_transform(all_data[high_skew_cols_list])
+
+        print("Section 3")
+
+        # LabelEncoder 초기화 및 타겟 변환
+        le = LabelEncoder()
+        train_data['target'] = le.fit_transform(train_data['target'].astype(str))
+        
+        # 객체형 컬럼에 대한 Label Encoding
+        for column in train_data.select_dtypes(include='object').columns:
+            train_data[column] = le.fit_transform(train_data[column].astype(str))
+
+        print("Section 4")
+        print("Train data shape: ", train_data.shape)
+
+        # PCA 적용 준비
+        train_data = train_data.drop(columns=['Set ID'])
+        test_data = all_data[all_data['target'].isnull()]
+        test_x = test_data.drop(columns=['target'])
+
+        # test_x에서 객체형 컬럼에 대한 Label Encoding
+        for column in test_x.select_dtypes(include='object').columns:
+            test_x[column] = le.fit_transform(test_x[column].astype(str))
+
+        features = train_data.drop(columns=['target', 'HEAD NORMAL COORDINATE X AXIS(1, 2, 3)', 'Dispense Volume Collect Result_Fill1'])
+        temp_drop = train_data[['HEAD NORMAL COORDINATE X AXIS(1, 2, 3)', 'Dispense Volume Collect Result_Fill1']]
+        
+        print("Features shape: ", features.shape)
+
+        # 수치형 컬럼 대해 데이터 정규화
+        scaled_features_train = pd.DataFrame(StandardScaler().fit_transform(features), columns=features.columns)
+        scaled_features_test = pd.DataFrame(StandardScaler().fit_transform(test_x.drop(columns=['HEAD NORMAL COORDINATE X AXIS(1, 2, 3)', 'Dispense Volume Collect Result_Fill1', 'Set ID'])),
+                                            columns=test_x.drop(columns=['HEAD NORMAL COORDINATE X AXIS(1, 2, 3)', 'Dispense Volume Collect Result_Fill1', 'Set ID']).columns)
+
+        # X_test 생성 및 컬럼 순서 맞추기
+        X_test = pd.concat([test_x[['HEAD NORMAL COORDINATE X AXIS(1, 2, 3)', 'Dispense Volume Collect Result_Fill1']].reset_index(drop=True), scaled_features_test.reset_index(drop=True)], axis=1)
+        scaled_features_train = pd.concat([scaled_features_train, temp_drop.reset_index(drop=True)], axis=1)
+
+        # X_test의 컬럼 순서 맞추기
+        X_test = X_test[scaled_features_train.columns]
+
+        self.X_test = X_test
+        self.Set_ID = test_x['Set ID']
+
+        print("Section 5")
+
+        # SMOTE 적용 및 train_test_split
+        target = train_data['target']
+        X_train, X_val, y_train, y_val = train_test_split(scaled_features_train, target, test_size=0.2, random_state=42)
+
+        # SMOTE 적용
+        smote = SMOTE(random_state=42)
+        self.X_train, self.y_train = smote.fit_resample(X_train, y_train)
+        self.X_val = X_val
+        self.y_val = y_val
