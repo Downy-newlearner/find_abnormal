@@ -158,6 +158,18 @@ class Preprocessing:
 
         # 주어진 칼럼들에서 편차를 계산하는 코드
         data['Stage2_Distance_Speed_StdDev'] = data[columns2].std(axis=1)
+
+        columns3 = [
+            'Stage3 Line1 Distance Speed Collect Result_Dam',
+            'Stage3 Line2 Distance Speed Collect Result_Dam',
+            'Stage3 Line3 Distance Speed Collect Result_Dam',
+            'Stage3 Line4 Distance Speed Collect Result_Dam'
+        ]
+
+        # 주어진 칼럼들에서 편차를 계산하는 코드
+        data['Stage3_Distance_Speed_StdDev'] = data[columns3].std(axis=1)
+
+
         # 열 목록 정의
         cols_to_average = ['Stage1 Circle1 Distance Speed Collect Result_Dam',
             'Stage1 Circle2 Distance Speed Collect Result_Dam',
@@ -175,10 +187,19 @@ class Preprocessing:
             'Stage2 Line2 Distance Speed Collect Result_Dam',
             'Stage2 Line3 Distance Speed Collect Result_Dam',
             'Stage2 Line4 Distance Speed Collect Result_Dam',
+            'Stage3 Circle1 Distance Speed Collect Result_Dam',
+            'Stage3 Circle2 Distance Speed Collect Result_Dam',
+            'Stage3 Circle3 Distance Speed Collect Result_Dam',
+            'Stage3 Circle4 Distance Speed Collect Result_Dam',
+            'Stage3 Line1 Distance Speed Collect Result_Dam',
+            'Stage3 Line2 Distance Speed Collect Result_Dam',
+            'Stage3 Line3 Distance Speed Collect Result_Dam',
+            'Stage3 Line4 Distance Speed Collect Result_Dam',
 
         ]
         data['Average Stage1 CL Distance Speed Collect Result_Dam'] = data[cols_to_average[:8]].mean(axis=1)
-        data['Average Stage2 CL Distance Speed Collect Result_Dam'] = data[cols_to_average[8:]].mean(axis=1)
+        data['Average Stage2 CL Distance Speed Collect Result_Dam'] = data[cols_to_average[8:16]].mean(axis=1)
+        data['Average Stage3 CL Distance Speed Collect Result_Dam'] = data[cols_to_average[16:]].mean(axis=1)
         data = data.drop(columns=cols_to_average)
 
         # 추가적인 상호작용 피처 생성
@@ -192,14 +213,19 @@ class Preprocessing:
             data['DISCHARGED SPEED OF RESIN Collect Result_Dam'] * 
             data['DISCHARGED TIME OF RESIN(Stage2) Collect Result_Dam']
         )
+        data['Speed_Time_Interaction_Stage3 Result_Dam'] = (
+            data['DISCHARGED SPEED OF RESIN Collect Result_Dam'] * 
+            data['DISCHARGED TIME OF RESIN(Stage3) Collect Result_Dam']
+        )
 
 
-        data['Total Speed_Time Result_Dam'] = data['Speed_Time_Interaction_Stage1 Result_Dam']+data['Speed_Time_Interaction_Stage2 Result_Dam']
+        data['Total Speed_Time Result_Dam'] = data['Speed_Time_Interaction_Stage1 Result_Dam']+data['Speed_Time_Interaction_Stage2 Result_Dam']+data['Speed_Time_Interaction_Stage3 Result_Dam']
 
         # 도메인 지식을 활용한 피처 생성: 예를 들어 레진 분사 과정에서 발생할 수 있는 레진 양과 관련된 계산
         data['Total_Dispense_Volume Result_Dam'] = (
             data['Dispense Volume(Stage1) Collect Result_Dam'] +
-            data['Dispense Volume(Stage2) Collect Result_Dam']
+            data['Dispense Volume(Stage2) Collect Result_Dam']+
+            data['Dispense Volume(Stage3) Collect Result_Dam']
         )
         data['CURE POSITION X Collect Result_Dam'] = abs(data['CURE START POSITION X Collect Result_Dam']-data['CURE END POSITION X Collect Result_Dam'])
         data['CURE POSITION Z Collect Result_Dam'] = abs(data['CURE START POSITION Z Collect Result_Dam']-data['CURE END POSITION Z Collect Result_Dam'])
