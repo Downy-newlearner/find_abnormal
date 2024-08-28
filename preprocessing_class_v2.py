@@ -541,7 +541,8 @@ class Preprocessing:
 
         print(all_data['target'])
 
-        if(all_data['target'].isnull().sum() == 0):
+        # train_data 언더셈플링
+        if(all_data['target'].isnull().sum() == 1234213):
             
             # 언더셈플링
             amout_AbNormal = all_data[all_data['target'] == 'AbNormal'].shape[0]
@@ -629,6 +630,10 @@ class Preprocessing:
 
         # SMOTE 적용 및 train_test_split
         y = all_data['target']
+
+
+        smote = SMOTE(random_state=42)
+        X, y = smote.fit_resample(X, y)
         
         print("X shape: ", X.shape)
         print("y shape: ", y.shape)
